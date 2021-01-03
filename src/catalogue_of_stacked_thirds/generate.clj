@@ -279,32 +279,51 @@
     (str (if (pos? root-movement) "+" "-")
          (base-root-movement-str (mod (Math/abs root-movement) 12)))))
 
-(defn interpretation-str
+(def pc->note
+  {0 "r"
+   1 "b9"
+   2 "9"
+   3 "b3"
+   4 "3"
+   5 "11"
+   6 "b5"
+   7 "5"
+   8 "b13"
+   9 "13"
+   10 "b7"
+   11 "7"})
+
+(defn voicing-str
+  [interpretation search-dot?]
+  (let [{[_ pc->note-overrides]:quality
+         :keys [root pc-vec]} interpretation
+        pc->note (merge pc->note pc->note-overrides)
+        chord-str (cond-> (vec (map pc->note pc-vec))
+                    search-dot? (update 0 #(str "." %)))
+        padding (- 25 (* 5 root))]
+    (string/join " " (concat (repeat padding "")
+                             (map #(format "%4s" %) chord-str)))))
+
+(defn intervals-str
   [interpretation]
   (let [{:keys [root chord]} interpretation
         chord-str (map intervals chord)
-        before-root (take root chord-str)
-        padding (- 11 (* 2 (count before-root)))]
+        padding (- 27 (* 5 root))]
     (string/join " " (concat (repeat padding "")
-                             before-root
-                             ["r"]
-                             (drop root chord-str)))))
-
-(defn quality-str
-  [interpretation]
-  (let [{:keys [quality]} interpretation]
-    (if (seq quality)
-      (string/join " / " quality)
-      "<unknown>")))
+                             (map #(format "%4s" %) chord-str)))))
 
 (defn format-interpretation
   [interpretation]
-  (let [{:keys [movements]} interpretation]
+  (let [{[quality] :quality
+         :keys [movements]} interpretation]
     (str
-     (format "%-34s %-20s %-21s\n"
-             (str (quality-str interpretation) ".")
+     (format "%-37s %-26s\n"
              ""
-             (str (interpretation-str interpretation) "."))
+             (intervals-str interpretation))
+     (format "%-12s %-24s %-26s\n"
+             (str "." quality ".")
+             ""
+             (str (voicing-str interpretation true) "."))
      "\n"
      (apply str
             (mapcat (fn [[movement interpretations]]
@@ -313,12 +332,13 @@
                                                                   (format "%2d" %))
                                                                movement))]
                         (map-indexed (fn [i interpretation]
-                                       (let [{:keys [root-movement]} interpretation]
-                                         (format "%-11s  %-5s  %-34s  %-21s\n"
+                                       (let [{[quality] :quality
+                                              :keys [root-movement]} interpretation]
+                                         (format "%-15s  %5s  %-12s  %-26s\n"
                                                  (if (zero? i) movement-str "")
                                                  (root-movement-str root-movement)
-                                                 (quality-str interpretation)
-                                                 (interpretation-str interpretation))))
+                                                 quality
+                                                 (voicing-str interpretation false))))
                                      interpretations)))
                     movements))
      "\n")))
