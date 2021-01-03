@@ -344,6 +344,8 @@
      "\n")))
 
 (defn -main
-  [& _]
-  (run! #(println (format-interpretation %)) (interpretations 2))
-  (run! #(println (format-interpretation %)) (interpretations 3)))
+  [& args]
+  (let [max-notes (Integer/parseInt (or (first args) "4"))]
+    (run! (fn [i]
+            (run! #(print (format-interpretation %)) (interpretations i)))
+          (range 2 max-notes))))
