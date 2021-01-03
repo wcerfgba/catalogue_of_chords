@@ -275,7 +275,7 @@
 (defn root-movement-str
   [root-movement]
   (if (= 0 (mod root-movement 12))
-    ""
+    "I"
     (str (if (pos? root-movement) "+" "-")
          (base-root-movement-str (mod (Math/abs root-movement) 12)))))
 
