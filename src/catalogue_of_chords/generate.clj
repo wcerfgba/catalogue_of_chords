@@ -1,4 +1,4 @@
-(ns catalogue-of-stacked-thirds.generate
+(ns catalogue-of-chords.generate
   (:require [clojure.set :as set]
             [clojure.string :as string]))
 
