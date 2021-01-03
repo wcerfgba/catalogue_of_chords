@@ -142,7 +142,8 @@
                              (vec (repeat length min)))))
 
 (def intervals
-  {2 "d"
+  {1 "h"
+   2 "d"
    3 "m"
    4 "M"
    5 "A"})
