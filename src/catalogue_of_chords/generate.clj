@@ -193,7 +193,7 @@
   [chord]
   (map (partial chord-interpretation chord) (range (inc (count chord)))))
 
-(def max-movement 5)
+(def max-movement 3)
 
 (defn movement-<
   [a b]
