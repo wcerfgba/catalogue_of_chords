@@ -195,11 +195,19 @@
 
 (def max-movement 5)
 
+(defn movement-<
+  [a b]
+  (let [distance (fn [movement] (apply + (map #(Math/abs %1) movement)))
+        movements (fn [movement] (count (remove zero? movement)))]
+    (cond (< (movements a) (movements b)) true
+          (> (movements a) (movements b)) false
+          :else (< (distance a) (distance b)))))
+
 (defn movements
   [length]
-  (let [distance (fn [movement] (apply + (map #(Math/abs %) movement)))]
-    (sort #(- (distance %1) (distance %2))
-          (vec-counter (- max-movement) max-movement length))))
+  (->> (vec-counter (- max-movement) max-movement length)
+       (sort (comparator movement-<))
+       (filter #(<= (count (remove zero? %)) (Math/floor (/ length 2))))))
 
 (defn move-chord
   [chord movement]
