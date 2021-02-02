@@ -352,7 +352,7 @@
 
 (defn -main
   [& args]
-  (let [max-notes (Integer/parseInt (or (first args) "4"))]
+  (let [max-notes (Integer/parseInt (or (first args) "5"))]
     (run! (fn [i]
             (run! #(print (format-interpretation %)) (interpretations i)))
           (range 2 max-notes))))
