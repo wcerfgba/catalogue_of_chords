@@ -251,6 +251,7 @@
   (let [movements (movements (inc chord-length))]
     (->> (chords chord-length)
          (mapcat chord-interpretations)
+         (remove (comp nil? :quality))
          (map (fn [interpretation]
                 (assoc interpretation
                        :movements (->> movements
