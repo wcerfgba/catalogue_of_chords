@@ -307,7 +307,7 @@
         pc->note (merge pc->note pc->note-overrides)
         chord-str (cond-> (vec (map pc->note pc-vec))
                     search-dot? (update 0 #(str "." %)))
-        padding (- 25 (* 5 root))]
+        padding (- 28 (* 5 root))]
     (string/join " " (concat (repeat padding "")
                              (map #(format "%4s" %) chord-str)))))
 
@@ -315,7 +315,7 @@
   [interpretation]
   (let [{:keys [root chord]} interpretation
         chord-str (map intervals chord)
-        padding (- 27 (* 5 root))]
+        padding (- 30 (* 5 root))]
     (string/join " " (concat (repeat padding "")
                              (map #(format "%4s" %) chord-str)))))
 
@@ -324,10 +324,10 @@
   (let [{[quality] :quality
          :keys [movements]} interpretation]
     (str
-     (format "%-37s %-26s\n"
+     (format "%-40s %-26s\n"
              ""
              (intervals-str interpretation))
-     (format "%-12s %-24s %-26s\n"
+     (format "%-12s %-27s %-26s\n"
              (str "." quality ".")
              ""
              (str (voicing-str interpretation true) "."))
@@ -341,7 +341,7 @@
                         (map-indexed (fn [i interpretation]
                                        (let [{[quality] :quality
                                               :keys [root-movement]} interpretation]
-                                         (format "%-15s  %5s  %-12s  %-26s\n"
+                                         (format "%-18s  %5s  %-12s  %-26s\n"
                                                  (if (zero? i) movement-str "")
                                                  (root-movement-str root-movement)
                                                  quality
