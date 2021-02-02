@@ -262,12 +262,10 @@
          (remove (comp nil? :quality))
          (map (fn [interpretation]
                 (assoc interpretation
-                       :movements (->> movements
-                                       (map (fn [movement]
-                                              [movement (move-interpretation
-                                                         interpretation
-                                                         movement)]))
-                                       (remove (comp nil? second)))))))))
+                       :movements (remove (comp nil? second)
+                                          (map #(vector % (move-interpretation interpretation %))
+                                               movements))))))))
+
 (def base-root-movement-str
   {1 "bII"
    2 "II"
