@@ -251,8 +251,8 @@
            (chord-interpretations)
            (map #(assoc % :root-movement (root-movement root movement %)))
            (map normalise-shrunk-interpretation)
-           (distinct)
-           (remove (comp nil? :quality))))))
+           (remove (comp nil? :quality))
+           (distinct)))))
 
 (defn interpretations
   [chord-length]
