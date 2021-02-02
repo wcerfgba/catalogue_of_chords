@@ -349,3 +349,7 @@
     (run! (fn [i]
             (run! #(print (format-interpretation %)) (interpretations i)))
           (range 2 max-notes))))
+
+;; TODO
+;; 
+;; display x for movement if note is removed ?
