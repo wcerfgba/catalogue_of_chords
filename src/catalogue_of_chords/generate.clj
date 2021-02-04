@@ -132,20 +132,21 @@
            exact-pc-set)))
 
 (defn- incr-vec-counter
-  [min max counter]
+  [values counter]
   (let [counter (vec counter)
-        top (last counter)]
+        top (last counter)
+        value->next (zipmap values (concat (rest values) [(first values)]))]
     (if (nil? top)
       nil
-      (if (< top max)
-        (conj (vec (drop-last counter)) (inc top))
-        (when-let [lower (incr-vec-counter min max (vec (drop-last counter)))]
-          (conj lower min))))))
+      (if (not= top (last values))
+        (conj (vec (drop-last counter)) (value->next top))
+        (when-let [lower (incr-vec-counter values (vec (drop-last counter)))]
+          (conj lower (first values)))))))
 
 (defn- vec-counter
-  [min max length]
-  (take-while some? (iterate (partial incr-vec-counter min max)
-                             (vec (repeat length min)))))
+  [values length]
+  (take-while some? (iterate (partial incr-vec-counter values)
+                             (vec (repeat length (first values))))))
 
 (def intervals
   {1 "h"
@@ -156,7 +157,7 @@
 
 (defn chords
   [length]
-  (vec-counter (apply min (keys intervals)) (apply max (keys intervals)) length))
+  (vec-counter (sort (keys intervals)) length))
 
 (defn interval+
   [& xs]
@@ -197,7 +198,10 @@
 
 (defn movement-<
   [a b]
-  (let [distance (fn [movement] (apply + (map #(Math/abs %1) movement)))
+  (let [numerify-remove (fn [movement] (map #(if (= :remove %) 0.5 %) movement))
+        a (numerify-remove a)
+        b (numerify-remove b)
+        distance (fn [movement] (apply + (map #(Math/abs %1) movement)))
         movements (fn [movement] (count (remove zero? movement)))]
     (cond (< (movements a) (movements b)) true
           (> (movements a) (movements b)) false
@@ -205,20 +209,19 @@
 
 (defn movements
   [length]
-  (->> (vec-counter (- max-movement) max-movement length)
+  (->> (vec-counter (concat [:remove] (range (- max-movement) max-movement)) length)
        (sort (comparator movement-<))
-       (filter #(<= (count (remove zero? %)) (Math/floor (/ length 2))))))
+       (filter #(<= (count (remove (fn [x] (= 0 x)) %)) (Math/floor (/ length 2))))))
 
 (defn move-chord
   [chord movement]
   (assert (= (inc (count chord)) (count movement))
           (str "Tried to move a chord containing " (inc (count chord)) " notes using a movement containing " (count movement) " notes."))
-  (reduce (fn [chord [note-i note-movement]]
-            (cond-> chord
-              (< 0 note-i) (update (dec note-i) #(+ % note-movement))
-              (< note-i (count chord)) (update note-i #(- % note-movement))))
-          chord
-          (map-indexed #(vector %1 %2) movement)))
+  (let [notes (->> chord
+                   (reduce #(conj %1 (+ (last %1) %2)) [0])
+                   (map #(if (= :remove %1) nil (+ %1 %2)) movement)
+                   (remove nil?))]
+    (mapv - (rest notes) notes)))
 
 (defn root-movement
   [old-root movement new-interpretation]
@@ -227,8 +230,10 @@
         ascending? (<= old-root root)
         [bottom-root top-root] (sort [old-root root])
         root-distance (- top-root bottom-root)
-        inter-root-intervals (take root-distance (drop bottom-root chord))]
-    (+ (get movement old-root)
+        inter-root-intervals (take root-distance (drop bottom-root chord))
+        root-shift (get movement old-root)
+        root-shift (if (= :remove root-shift) 0 root-shift)]
+    (+ root-shift
        (* (if ascending? 1 -1)
           (apply + inter-root-intervals)))))
 
@@ -244,8 +249,7 @@
   [interpretation movement]
   (let [{:keys [chord root]} interpretation
         new-chord (move-chord chord movement)
-        valid? (and (every? (set/union #{0} (set (keys intervals))) new-chord)
-                    (not-every? zero? new-chord))]
+        valid? (every? (set (keys intervals)) new-chord)]
     (when valid?
       (->> new-chord
            (chord-interpretations)
@@ -301,52 +305,56 @@
    11 "7"})
 
 (defn voicing-str
-  [interpretation search-dot?]
-  (let [{[_ pc->note-overrides]:quality
-         :keys [root pc-vec]} interpretation
+  [interpretation movement]
+  (let [{[_ pc->note-overrides] :quality
+         :keys [pc-vec]} interpretation
         pc->note (merge pc->note pc->note-overrides)
-        chord-str (cond-> (vec (map pc->note pc-vec))
-                    search-dot? (update 0 #(str "." %)))
-        padding (- 28 (* 5 root))]
-    (string/join " " (concat (repeat padding "")
-                             (map #(format "%4s" %) chord-str)))))
+        chord-str (reduce (fn [chord-str i]
+                            (if (= :remove (get movement i))
+                              (concat (take i chord-str) [""] (drop i chord-str))
+                              chord-str))
+                          (map pc->note pc-vec)
+                          (range (count movement)))]
+    (string/join " " (map #(format "%4s" %) chord-str))))
 
 (defn intervals-str
   [interpretation]
-  (let [{:keys [root chord]} interpretation
-        chord-str (map intervals chord)
-        padding (- 30 (* 5 root))]
-    (string/join " " (concat (repeat padding "")
-                             (map #(format "%4s" %) chord-str)))))
+  (let [{:keys [chord]} interpretation
+        chord-str (map intervals chord)]
+    (string/join " " (map #(format "%4s" %) chord-str))))
+
+(defn movement-str
+  [movement]
+  (string/join " " (map #(cond (= :remove %) "  x"
+                               (pos? %) (format " +%1d" %)
+                               (zero? %) "  ."
+                               :else (format "%3d" %))
+                        movement)))
 
 (defn format-interpretation
   [interpretation]
   (let [{[quality] :quality
          :keys [movements]} interpretation]
     (str
-     (format "%-40s %-26s\n"
+     (format "%-51s%-29s\n"
              ""
              (intervals-str interpretation))
-     (format "%-12s %-27s %-26s\n"
+     (format "%-12s%-39s%-29s\n"
              (str "." quality ".")
              ""
-             (str (voicing-str interpretation true) "."))
+             (str "." (string/trim (voicing-str interpretation nil)) "."))
      "\n"
      (apply str
             (mapcat (fn [[movement interpretations]]
-                      (let [movement-str (string/join " " (map #(if (pos? %)
-                                                                  (format "+%1d" %)
-                                                                  (format "%2d" %))
-                                                               movement))]
-                        (map-indexed (fn [i interpretation]
-                                       (let [{[quality] :quality
-                                              :keys [root-movement]} interpretation]
-                                         (format "%-18s  %5s  %-12s  %-26s\n"
-                                                 (if (zero? i) movement-str "")
-                                                 (root-movement-str root-movement)
-                                                 quality
-                                                 (voicing-str interpretation false))))
-                                     interpretations)))
+                      (map-indexed (fn [i interpretation]
+                                     (let [{[quality] :quality
+                                            :keys [root-movement]} interpretation]
+                                       (format "%-23s     %5s  %-12s  %-29s\n"
+                                               (if (zero? i) (movement-str movement) "")
+                                               (root-movement-str root-movement)
+                                               quality
+                                               (voicing-str interpretation movement))))
+                                   interpretations))
                     movements))
      "\n")))
 
@@ -356,7 +364,3 @@
     (run! (fn [i]
             (run! #(print (format-interpretation %)) (interpretations i)))
           (range 2 max-notes))))
-
-;; TODO
-;; 
-;; display x for movement if note is removed ?
