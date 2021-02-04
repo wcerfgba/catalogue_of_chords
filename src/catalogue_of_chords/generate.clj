@@ -258,7 +258,7 @@
   [chord-length]
   (let [movements (movements (inc chord-length))]
     (->> (chords chord-length)
-         (mapcat chord-interpretations)
+         (map #(chord-interpretation % 0))
          (remove (comp nil? :quality))
          (map (fn [interpretation]
                 (assoc interpretation
